@@ -1,4 +1,4 @@
-class FixerService
+class RateService
   URL = 'http://localhost:3000/api/rates/'
   TARGET = 'USD'
 
