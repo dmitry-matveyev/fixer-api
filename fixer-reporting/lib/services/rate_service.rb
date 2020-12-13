@@ -1,9 +1,12 @@
+# frozen_string_literal: true
+
 class RateService
   URL = 'http://localhost:3000/api/rates/'
 
-  def initialize(date:, target:)
+  def initialize(date:, target:, base:)
     self.date = date
     self.target = target
+    self.base = base
   end
 
   def call
@@ -12,16 +15,16 @@ class RateService
 
     return unless response.is_a?(Net::HTTPSuccess)
 
-    JSON.parse(response.body).to_f
+    JSON.parse(response.body)
   end
 
   private
 
-  attr_accessor :date, :target
+  attr_accessor :date, :target, :base
 
   def request_rate(url)
     uri = URI(url)
-    params = { target: target }
+    params = { target: target, base: base }
     uri.query = URI.encode_www_form(params)
 
     Net::HTTP.get_response(uri)

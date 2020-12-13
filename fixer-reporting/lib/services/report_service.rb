@@ -1,46 +1,64 @@
 # frozen_string_literal: true
 
 class ReportService
-  FORMATS = %i[csv]
+  FORMATS = %i[csv].freeze
   THRESHOLDS = [1.day, 7.days, 1.month, 1.year].freeze
-  DEFAULT_TARGET = 'USD'
+  DEFAULT_TARGET_CURRENCY = 'USD'
+  DEFAULT_BASE_CURRENCY = 'EUR'
+  HEADERS = %i[base target today yesterday week month year].freeze
 
-  def initialize(targets)
-    self.targets = Array.wrap(targets).map(&:upcase)
-    self.targets << DEFAULT_TARGET if targets.empty?
+  # the idea is not to stop the report if some values can not be received
+  ERROR_MESSAGE = 'err'
+
+  def initialize(target_currencies)
+    self.target_currencies = Array.wrap(target_currencies).map(&:upcase)
+    self.target_currencies << DEFAULT_TARGET_CURRENCY if target_currencies.empty?
   end
 
   def call
-    rows = []
+    rows = [HEADERS]
 
-    targets.each do |target_currency|
-      today_rate = rate_service_call(target: target_currency)
-
-      diffs = THRESHOLDS.map do |offset|
-        rate = rate_service_call(target: target_currency, offset: offset)
-        next if rate.blank?
-
-        today_rate - rate
-      end
-
-      rows << [today_rate, *diffs]
+    target_currencies.each do |target_currency|
+      rows << row(target_currency)
     end
 
+    persist(rows)
+  end
+
+  private
+
+  attr_accessor :target_currencies
+
+  def row(target_currency)
+    row = [DEFAULT_BASE_CURRENCY, target_currency]
+
+    today_rate = request_rate(target: target_currency)
+    if today_rate.blank?
+      row << ERROR_MESSAGE
+      return row
+    else
+      row << today_rate
+    end
+
+    THRESHOLDS.each do |offset|
+      rate = request_rate(target: target_currency, offset: offset)
+      row << (rate.present? ? today_rate - rate : ERROR_MESSAGE)
+    end
+
+    row
+  end
+
+  def persist(rows)
     FORMATS.each do |format|
-      # TODO: move converter into separate class
-      processor = self.method(:"#{format}")
+      processor = method(:"#{format}")
       data = processor.call(rows)
       save_file(data: data, format: format)
     end
   end
 
-  private
-
-  attr_accessor :targets
-
-  def rate_service_call(target:, offset: 0)
+  def request_rate(target:, offset: 0)
     date = Date.current - offset
-    RateService.new(date: date, target: target).call
+    RateService.new(date: date, target: target, base: DEFAULT_BASE_CURRENCY).call
   end
 
   def save_file(data:, format:)
@@ -54,7 +72,8 @@ class ReportService
     # AWS::S3.new.buckets[APP_CONFIG['amazon_bucket_name']].objects[filename].write(data, options)
   end
 
+  # TODO: move converter into separate class
   def csv(rows)
-    rows.map {|r| r.join(';') }.join("\n")
+    rows.map { |r| r.join(';') }.join("\n")
   end
 end
