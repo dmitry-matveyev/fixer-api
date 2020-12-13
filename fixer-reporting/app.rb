@@ -9,4 +9,4 @@ require 'tempfile'
   Dir["#{root}/**/*.rb"].each { |path| require_relative path }
 end
 
-ReportService.new.call
+ReportService.new(ARGV).call

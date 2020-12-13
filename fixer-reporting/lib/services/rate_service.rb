@@ -1,9 +1,9 @@
 class RateService
   URL = 'http://localhost:3000/api/rates/'
-  TARGET = 'USD'
 
-  def initialize(date)
+  def initialize(date:, target:)
     self.date = date
+    self.target = target
   end
 
   def call
@@ -17,11 +17,11 @@ class RateService
 
   private
 
-  attr_accessor :date
+  attr_accessor :date, :target
 
   def request_rate(url)
     uri = URI(url)
-    params = { target: TARGET }
+    params = { target: target }
     uri.query = URI.encode_www_form(params)
 
     Net::HTTP.get_response(uri)
