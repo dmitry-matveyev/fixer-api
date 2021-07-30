@@ -13,3 +13,5 @@ Build a small application that runs every evening, after the markets close and c
 * usage: `cd fixer-reporting && ruby app.rb usd rub etc`
 * it outputs result csv file path to stdout
 
+# proxy service is connected as a submodule from here: https://github.com/dmitry-matveyev/fixer-proxy/
+
